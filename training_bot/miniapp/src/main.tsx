@@ -26,6 +26,7 @@ function App() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [tab, setTab] = useState<Tab>("today");
   const [workoutId, setWorkoutId] = useState<number | null>(null);
+  const [selectedWorkoutType, setSelectedWorkoutType] = useState("A");
   const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
   const [status, setStatus] = useState("Загрузка");
 
@@ -40,33 +41,39 @@ function App() {
       const data = await getDashboard();
       setDashboard(data);
       setWorkoutId(data.today.current_workout_id || null);
+      setSelectedWorkoutType(data.today.workout_type || "A");
       setStatus("");
     } catch {
       setStatus("Открой приложение из Telegram, чтобы пройти авторизацию.");
     }
   }
 
+  const activePlan = useMemo(() => {
+    if (!dashboard) return [];
+    return dashboard.plans?.[selectedWorkoutType] || dashboard.today_plan;
+  }, [dashboard, selectedWorkoutType]);
+
   const activeIndex = useMemo(() => {
     if (!dashboard || !activeExercise) return 0;
-    const index = dashboard.today_plan.findIndex((item) => item.exercise_id === activeExercise.exercise_id);
+    const index = activePlan.findIndex((item) => item.exercise_id === activeExercise.exercise_id);
     return index >= 0 ? index : 0;
-  }, [dashboard, activeExercise]);
+  }, [dashboard, activeExercise, activePlan]);
 
   async function startWorkout() {
     if (!dashboard) return;
     if (dashboard.today.current_workout_id) {
       setWorkoutId(dashboard.today.current_workout_id);
     } else {
-      const created = await createWorkout({ workout_type: dashboard.today.workout_type, energy_level: "Normal" });
+      const created = await createWorkout({ workout_type: selectedWorkoutType, energy_level: "Normal" });
       setWorkoutId(created.workout.id);
     }
-    setActiveExercise(dashboard.today_plan[0] || null);
+    setActiveExercise(activePlan[0] || null);
     setStatus("Тренировка начата");
   }
 
   function nextExercise() {
     if (!dashboard) return;
-    const next = dashboard.today_plan[activeIndex + 1];
+    const next = activePlan[activeIndex + 1];
     setActiveExercise(next || null);
     setStatus(next ? "Следующее упражнение" : "План завершён");
   }
@@ -142,6 +149,13 @@ function App() {
       {tab === "today" && dashboard && (
         <TodayPanel
           dashboard={dashboard}
+          plan={activePlan}
+          selectedWorkoutType={selectedWorkoutType}
+          onSelectWorkoutType={(type) => {
+            if (workoutId) return;
+            setSelectedWorkoutType(type);
+            setActiveExercise(null);
+          }}
           workoutId={workoutId}
           activeExercise={activeExercise}
           activeIndex={activeIndex}
@@ -160,6 +174,9 @@ function App() {
 
 function TodayPanel({
   dashboard,
+  plan,
+  selectedWorkoutType,
+  onSelectWorkoutType,
   workoutId,
   activeExercise,
   activeIndex,
@@ -169,6 +186,9 @@ function TodayPanel({
   onFinish
 }: {
   dashboard: Dashboard;
+  plan: Exercise[];
+  selectedWorkoutType: string;
+  onSelectWorkoutType: (type: string) => void;
   workoutId: number | null;
   activeExercise: Exercise | null;
   activeIndex: number;
@@ -177,7 +197,7 @@ function TodayPanel({
   onNext: () => void;
   onFinish: () => void;
 }) {
-  const progress = activeExercise ? Math.round(((activeIndex + 1) / dashboard.today_plan.length) * 100) : 0;
+  const progress = activeExercise ? Math.round(((activeIndex + 1) / plan.length) * 100) : 0;
   return (
     <section className="pane">
       <section className="hero-panel">
@@ -192,10 +212,26 @@ function TodayPanel({
 
       <ActionList actions={dashboard.next_actions} />
 
+      {!workoutId && (
+        <div className="workout-switch" aria-label="Выбор тренировки">
+          {["A", "B"].map((type) => (
+            <button
+              key={type}
+              className={selectedWorkoutType === type ? "active" : ""}
+              onClick={() => onSelectWorkoutType(type)}
+              type="button"
+            >
+              <Dumbbell aria-hidden="true" />
+              <span>{type}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {!activeExercise && (
         <button className="primary start-button" onClick={onStart}>
           <Dumbbell aria-hidden="true" />
-          <span>{workoutId ? "Workout" : `Workout ${dashboard.today.workout_type}`}</span>
+          <span>{workoutId ? "Workout" : `Workout ${selectedWorkoutType}`}</span>
         </button>
       )}
 
@@ -203,7 +239,7 @@ function TodayPanel({
         <article className="exercise">
           <div className="exercise-head">
             <div>
-              <p className="eyebrow">{activeIndex + 1}/{dashboard.today_plan.length} · {activeExercise.block}</p>
+              <p className="eyebrow">{activeIndex + 1}/{plan.length} · {activeExercise.block}</p>
               <h2>{activeExercise.name}</h2>
             </div>
             <span className="progress-chip">{progress}%</span>

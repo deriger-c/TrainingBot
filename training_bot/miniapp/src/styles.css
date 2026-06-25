@@ -267,6 +267,31 @@ button.primary:active {
   width: 100%;
 }
 
+.workout-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.workout-switch button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(12, 23, 24, 0.88);
+  color: var(--text);
+}
+
+.workout-switch button.active {
+  border-color: var(--emerald);
+  background: rgba(34, 211, 166, 0.14);
+  color: #dffef5;
+  font-weight: 700;
+}
+
 .exercise,
 .row,
 .muted {

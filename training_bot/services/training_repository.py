@@ -78,6 +78,10 @@ async def dashboard(db: AsyncSession, user: User) -> dict:
             "current_status": current_workout.status if current_workout else "ready",
             "headline": "Продолжить тренировку" if current_workout else f"Сегодня: Workout {next_workout_type}",
         },
+        "plans": {
+            "A": [_exercise_payload(exercise) for exercise in get_workout("A")],
+            "B": [_exercise_payload(exercise) for exercise in get_workout("B")],
+        },
         "today_plan": [_exercise_payload(exercise) for exercise in get_workout(current_workout.workout_type if current_workout else next_workout_type)],
         "recent_workouts": [_workout_payload(workout) for workout in workouts],
         "recommendations": [_recommendation_payload(item) for item in recommendations],

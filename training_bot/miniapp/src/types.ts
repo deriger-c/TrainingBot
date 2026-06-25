@@ -76,6 +76,7 @@ export type NextAction = {
 export type Dashboard = {
   user: { telegram_id: number; first_name: string; timezone: string };
   today: TodayState;
+  plans?: Record<string, Exercise[]>;
   today_plan: Exercise[];
   recent_workouts: Workout[];
   recommendations: Recommendation[];
