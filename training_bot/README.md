@@ -304,6 +304,7 @@ FastAPI backend для Telegram webhook, Mini App и локального AI-wor
 ```env
 DATABASE_URL=sqlite+aiosqlite:///./data/training_bot.db
 WORKER_TOKEN=change_me_to_a_long_random_worker_token
+TELEGRAM_WEBHOOK_SECRET=change_me_to_a_long_random_telegram_webhook_secret
 PUBLIC_BASE_URL=https://your-free-backend.example.com
 MINIAPP_URL=https://your-cloudflare-pages-site.pages.dev
 OLLAMA_BASE_URL=http://localhost:11434
@@ -326,6 +327,8 @@ POST /api/coach/recommendations
 ```
 
 Mini App endpoints требуют Telegram header `X-Telegram-Init-Data`. Coach endpoints требуют `X-Worker-Token`.
+
+Для полного бесплатного деплоя смотри [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Локальный AI-worker
 

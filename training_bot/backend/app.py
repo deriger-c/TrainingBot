@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot import set_commands
 from bot_factory import build_dispatcher
 from backend.schemas import AIRecommendationCreate, ExerciseSetCreate, WorkoutCreate, WorkoutFinish
-from backend.security import parse_and_validate_init_data, validate_worker_token
+from backend.security import parse_and_validate_init_data, validate_telegram_webhook_secret, validate_worker_token
 from config import Config, load_config
 from db import get_session, init_db
 from db.models import User
@@ -54,7 +54,14 @@ def create_app() -> FastAPI:
         return {"ok": True, "mode": "free-cloud"}
 
     @app.post("/telegram/webhook")
-    async def telegram_webhook(request: Request) -> dict:
+    async def telegram_webhook(
+        request: Request,
+        x_telegram_bot_api_secret_token: str | None = Header(
+            default=None,
+            alias="X-Telegram-Bot-Api-Secret-Token",
+        ),
+    ) -> dict:
+        validate_telegram_webhook_secret(config, x_telegram_bot_api_secret_token)
         update = Update.model_validate(await request.json(), context={"bot": bot})
         await dispatcher.feed_update(bot, update)
         return {"ok": True}

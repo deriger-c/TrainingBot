@@ -3,12 +3,19 @@ services:
     name: training-bot-api
     runtime: python
     plan: free
+    rootDir: training_bot
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn web_app:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: BOT_TOKEN
         sync: false
       - key: ADMIN_USER_ID
+        sync: false
+      - key: GOOGLE_SCRIPT_URL
+        sync: false
+      - key: GOOGLE_SCRIPT_SECRET
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
         sync: false
       - key: DATABASE_URL
         sync: false

@@ -9,7 +9,8 @@ from urllib.parse import urlencode
 
 from fastapi import HTTPException
 
-from backend.security import parse_and_validate_init_data
+from backend.security import parse_and_validate_init_data, validate_telegram_webhook_secret
+from config import Config
 
 
 def signed_init_data(bot_token: str, user: dict, auth_date: int | None = None) -> str:
@@ -40,6 +41,33 @@ class TelegramInitDataTests(unittest.TestCase):
                 signed_init_data("123456:token", {"id": 42}) + "x",
                 "123456:token",
             )
+
+
+class TelegramWebhookSecretTests(unittest.TestCase):
+    def _config(self, secret: str) -> Config:
+        return Config(
+            bot_token="123456:token",
+            google_script_url="",
+            google_script_secret="",
+            telegram_webhook_secret=secret,
+            admin_user_id=None,
+            default_timezone="Asia/Jerusalem",
+            database_url="sqlite+aiosqlite:///./data/training_bot.db",
+            worker_token="worker",
+            public_base_url="",
+            miniapp_url="",
+            ollama_base_url="http://localhost:11434",
+            ollama_model="gemma3:4b",
+        )
+
+    def test_empty_webhook_secret_allows_local_dev(self) -> None:
+        validate_telegram_webhook_secret(self._config(""), None)
+
+    def test_bad_webhook_secret_is_rejected(self) -> None:
+        with self.assertRaises(HTTPException) as raised:
+            validate_telegram_webhook_secret(self._config("secret"), "wrong")
+
+        self.assertEqual(raised.exception.status_code, 403)
 
 
 if __name__ == "__main__":

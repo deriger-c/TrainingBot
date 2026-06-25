@@ -11,6 +11,7 @@ class Config:
     bot_token: str
     google_script_url: str
     google_script_secret: str
+    telegram_webhook_secret: str
     admin_user_id: int | None
     default_timezone: str
     database_url: str
@@ -40,6 +41,7 @@ def load_config() -> Config:
         bot_token=token,
         google_script_url=os.getenv("GOOGLE_SCRIPT_URL", "").strip(),
         google_script_secret=os.getenv("GOOGLE_SCRIPT_SECRET", "").strip(),
+        telegram_webhook_secret=os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip(),
         admin_user_id=_optional_int(os.getenv("ADMIN_USER_ID")),
         default_timezone=os.getenv("DEFAULT_TIMEZONE", "Asia/Jerusalem").strip(),
         database_url=os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/training_bot.db").strip(),

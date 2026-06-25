@@ -57,3 +57,10 @@ def validate_worker_token(config: Config, token: str | None = Header(default=Non
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="WORKER_TOKEN is not configured")
     if not token or not hmac.compare_digest(token, config.worker_token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bad worker token")
+
+
+def validate_telegram_webhook_secret(config: Config, token: str | None) -> None:
+    if not config.telegram_webhook_secret:
+        return
+    if not token or not hmac.compare_digest(token, config.telegram_webhook_secret):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Bad Telegram webhook secret")
