@@ -10,7 +10,20 @@ from config import load_config
 async def main() -> None:
     config = load_config()
     if not config.public_base_url:
-        raise RuntimeError("PUBLIC_BASE_URL is required to set Telegram webhook")
+        print("PUBLIC_BASE_URL is not set.")
+        print("Set it only after Render gives you the public backend URL.")
+        print("")
+        print("Example .env value:")
+        print("PUBLIC_BASE_URL=https://your-training-bot-api.onrender.com")
+        print("")
+        print("Then run again:")
+        print("python -m scripts.set_webhook")
+        raise SystemExit(2)
+    if not config.public_base_url.startswith("https://"):
+        print("PUBLIC_BASE_URL must be a public HTTPS URL for Telegram webhooks.")
+        print(f"Current value: {config.public_base_url}")
+        print("Example: https://your-training-bot-api.onrender.com")
+        raise SystemExit(2)
 
     webhook_url = f"{config.public_base_url}/telegram/webhook"
     bot = Bot(token=config.bot_token)
