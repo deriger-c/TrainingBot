@@ -293,7 +293,7 @@ function ExerciseStatCard({ stat }: { stat: ExerciseStat }) {
   );
 }
 
-function MiniChart({ points }: { points: ExerciseStat["recent_points"] }) {
+function MiniChart({ points = [] }: { points?: ExerciseStat["recent_points"] }) {
   if (!points.length) return null;
   const max = Math.max(...points.map((point) => point.value), 1);
   return (
