@@ -1,0 +1,187 @@
+:root {
+  color: #17211c;
+  background: #f3f6f1;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app {
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.eyebrow {
+  color: #59655c;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 18px 0 12px;
+}
+
+.tabs button,
+.ghost,
+.actions button {
+  min-height: 40px;
+  border: 1px solid #ccd7cf;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #17211c;
+}
+
+.tabs .active {
+  border-color: #1f7a52;
+  background: #dff1e7;
+  font-weight: 700;
+}
+
+.status {
+  margin-bottom: 12px;
+  border-left: 4px solid #1f7a52;
+  background: #ffffff;
+  padding: 10px 12px;
+}
+
+.pane {
+  display: grid;
+  gap: 12px;
+}
+
+.exercise,
+.row,
+.muted {
+  border: 1px solid #d7ded9;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.exercise {
+  display: grid;
+  gap: 10px;
+}
+
+.set-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.set-form label {
+  display: grid;
+  gap: 5px;
+  color: #3d4941;
+  font-size: 14px;
+}
+
+.set-form input {
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid #c9d4cc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fbfcfb;
+}
+
+.set-form .check,
+.set-form .primary {
+  grid-column: 1 / -1;
+}
+
+.check {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.check input {
+  min-height: 20px;
+  width: 20px;
+}
+
+.primary {
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  background: #1f7a52;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+}
+
+.row {
+  display: grid;
+  gap: 6px;
+}
+
+.row h3 {
+  font-size: 17px;
+}
+
+.row p,
+.muted {
+  color: #59655c;
+}
+
+@media (max-width: 360px) {
+  .tabs button {
+    font-size: 13px;
+  }
+
+  .set-form {
+    grid-template-columns: 1fr;
+  }
+}

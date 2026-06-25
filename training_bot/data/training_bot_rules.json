@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0.0",
+  "baseline_maxes": {
+    "strict_pullups": {
+      "label": "Максимум строгих подтягиваний",
+      "value": 15,
+      "unit": "reps",
+      "date": "2026-06-16"
+    },
+    "strict_dips": {
+      "label": "Максимум чистых отжиманий на брусьях",
+      "value": 21,
+      "unit": "reps",
+      "date": "2026-06-16"
+    },
+    "elevated_pike_pushup": {
+      "label": "Максимум elevated pike push-up",
+      "value": 11,
+      "unit": "reps",
+      "height_cm": 51,
+      "date": "2026-06-16"
+    },
+    "chest_to_wall_handstand": {
+      "label": "Стойка лицом к стене",
+      "value": 40,
+      "unit": "sec",
+      "date": "2026-06-16"
+    }
+  },
+  "progression_rules": {
+    "global": {
+      "increase_load_only_when": [
+        "all_planned_sets_completed",
+        "top_of_target_range_reached",
+        "rir_gte_2",
+        "technique_valid",
+        "pain_false",
+        "progression_lock_false",
+        "max_test_false",
+        "two_consecutive_comparable_successes"
+      ],
+      "upper_body_increase": "+1.25-2.5kg, max 7.5%",
+      "lower_body_increase": "+2.5-5kg, max 10%",
+      "machine_increase": "smallest stack increment, max 10%"
+    },
+    "pain": {
+      "if_pain_level_gt_0": {
+        "progression_eligible": false,
+        "suggest_load_increase": false,
+        "suggest_harder_variation": false,
+        "message": "Остановись из-за боли. Прогрессию сегодня блокируем."
+      }
+    },
+    "safe_technical_stop": {
+      "stop_reasons": ["shaking", "technique_loss", "loss_of_control"],
+      "count_as_failure": false,
+      "message": "Ты правильно остановил подход при потере контроля. Это не провал."
+    },
+    "max_test": {
+      "exclude_from_working_progression": true,
+      "message": "Максимальный тест сохранён, но не влияет на рабочую прогрессию."
+    }
+  },
+  "exercise_aliases": {
+    "chest_to_wall_handstand": ["Стойка лицом к стене", "Стойка на руках у стены"],
+    "elevated_pike_pushup": ["Pike Push Up", "Elevated Pike Push Up", "отжимания с ногами"],
+    "pullup": ["Подтягивания"],
+    "dip": ["Брусья", "Брусья с наклоном вперёд"],
+    "romanian_deadlift": ["Румынская тяга"],
+    "bulgarian_split_squat": ["Болгарские выпады"],
+    "hanging_straight_leg_raise": ["Подъём прямых ног в висе", "Подъём коленей или ног в висе"],
+    "cable_face_pull": ["Face Pull", "Face Pull / задняя дельта"],
+    "hollow_body_hold": ["Hollow Body Hold"]
+  },
+  "bot_questions": {
+    "rir": "Сколько чистых повторений оставалось в запасе?",
+    "reserve_seconds": "Сколько секунд ты мог бы продержаться ещё с чистой техникой?",
+    "pain": "Была боль или неприятный дискомфорт?",
+    "technique": "Техника была чистой и подконтрольной?",
+    "falls": "Были падения или потеря контроля в стойке?"
+  },
+  "recommendation_messages": {
+    "increase": "Можно повышать нагрузку, если это уже второе подряд сопоставимое успешное занятие.",
+    "keep": "Вес или сложность пока оставляем.",
+    "decrease": "Нагрузку стоит снизить или упростить вариант.",
+    "pain_stop": "Остановись из-за боли. Прогрессию сегодня блокируем.",
+    "safe_stop": "Ты правильно остановил подход при потере контроля. Это не провал.",
+    "max_test": "Максимальный тест сохранён, но не влияет на рабочую прогрессию.",
+    "rest_increase": "В следующий раз можно добавить 30 секунд отдыха."
+  }
+}
