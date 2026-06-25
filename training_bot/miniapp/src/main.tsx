@@ -327,6 +327,7 @@ function StatsPanel({ stats, workouts }: { stats: ExerciseStat[]; workouts: Work
 function ExerciseStatCard({ stat }: { stat: ExerciseStat }) {
   const risk = stat.pain_events > 0;
   const rirText = stat.average_rir === null || stat.average_rir === undefined ? "нет" : String(stat.average_rir);
+  const bestText = bestResultText(stat);
   return (
     <article className={risk ? "stat-card risk" : "stat-card"}>
       <div className="stat-title">
@@ -340,7 +341,7 @@ function ExerciseStatCard({ stat }: { stat: ExerciseStat }) {
         <small><b>{rirText}</b> avg RIR</small>
         <small><b>{stat.pain_events}</b> pain</small>
       </div>
-      <MiniChart points={stat.recent_points} />
+      <ProgressChart points={stat.recent_points} bestText={bestText} lastText={stat.last_result} />
       <div className="best-line">
         {stat.best_weight !== null && stat.best_weight !== undefined && <span>{stat.best_weight} кг</span>}
         {stat.best_reps !== null && stat.best_reps !== undefined && <span>{stat.best_reps} reps</span>}
@@ -351,18 +352,57 @@ function ExerciseStatCard({ stat }: { stat: ExerciseStat }) {
   );
 }
 
-function MiniChart({ points = [] }: { points?: ExerciseStat["recent_points"] }) {
-  if (!points.length) return null;
+function bestResultText(stat: ExerciseStat): string {
+  const parts = [];
+  if (stat.best_weight !== null && stat.best_weight !== undefined) parts.push(`${stat.best_weight} кг`);
+  if (stat.best_reps !== null && stat.best_reps !== undefined) parts.push(`${stat.best_reps} reps`);
+  if (stat.best_duration_seconds !== null && stat.best_duration_seconds !== undefined) parts.push(`${stat.best_duration_seconds} сек`);
+  return parts.length ? parts.join(" · ") : stat.last_result;
+}
+
+function ProgressChart({
+  points = [],
+  bestText,
+  lastText
+}: {
+  points?: ExerciseStat["recent_points"];
+  bestText: string;
+  lastText: string;
+}) {
+  if (!points.length) {
+    return (
+      <div className="chart-empty">
+        <span>Точек для графика пока мало</span>
+      </div>
+    );
+  }
   const max = Math.max(...points.map((point) => point.value), 1);
+  const first = points[0];
+  const last = points[points.length - 1];
   return (
-    <div className="mini-chart" aria-label="Мини график прогресса">
-      {points.map((point, index) => (
-        <span
-          key={`${point.date}-${point.label}-${index}`}
-          title={`${point.date}: ${point.label}`}
-          style={{ height: `${Math.max(18, Math.round((point.value / max) * 100))}%` }}
-        />
-      ))}
+    <div className="progress-chart" aria-label="Диаграмма прогресса">
+      <div className="chart-summary">
+        <span><b>Сейчас</b>{lastText || last.label}</span>
+        <span><b>Лучшее</b>{bestText}</span>
+      </div>
+      <div className="chart-area">
+        <div className="chart-grid" aria-hidden="true" />
+        <div className="chart-bars">
+          {points.map((point, index) => (
+            <span
+              key={`${point.date}-${point.label}-${index}`}
+              title={`${point.date}: ${point.label}`}
+              style={{ height: `${Math.max(16, Math.round((point.value / max) * 100))}%` }}
+            >
+              <i>{point.label}</i>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="chart-axis">
+        <span>{first.date}</span>
+        <span>{last.date}</span>
+      </div>
     </div>
   );
 }
