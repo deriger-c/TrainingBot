@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import re
 
 from aiogram import Bot
 
 from config import load_config
+
+WEBHOOK_SECRET_RE = re.compile(r"^[A-Za-z0-9_-]{1,256}$")
 
 
 async def main() -> None:
@@ -23,6 +26,15 @@ async def main() -> None:
         print("PUBLIC_BASE_URL must be a public HTTPS URL for Telegram webhooks.")
         print(f"Current value: {config.public_base_url}")
         print("Example: https://your-training-bot-api.onrender.com")
+        raise SystemExit(2)
+    if config.telegram_webhook_secret and not WEBHOOK_SECRET_RE.fullmatch(config.telegram_webhook_secret):
+        print("TELEGRAM_WEBHOOK_SECRET contains characters Telegram does not allow.")
+        print("Use only latin letters, digits, underscore and hyphen: A-Z a-z 0-9 _ -")
+        print("")
+        print("Good example:")
+        print("TELEGRAM_WEBHOOK_SECRET=training_bot_webhook_2026_safe_token")
+        print("")
+        print("Set the exact same value in Render and in your local .env, then run this script again.")
         raise SystemExit(2)
 
     webhook_url = f"{config.public_base_url}/telegram/webhook"
