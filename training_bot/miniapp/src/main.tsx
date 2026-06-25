@@ -13,12 +13,15 @@ import {
   Plus,
   RefreshCw,
   Save,
+  ShieldAlert,
+  ShieldCheck,
   Target,
+  TrendingUp,
   Trophy,
   type LucideIcon
 } from "lucide-react";
 import { addSet, createGoal, createWorkout, finishWorkout, getDashboard } from "./api";
-import type { CoachStatus, Dashboard, Exercise, ExerciseStat, NextAction, Recommendation, Workout } from "./types";
+import type { CoachHint, CoachStatus, Dashboard, Exercise, ExerciseStat, NextAction, Recommendation, Workout } from "./types";
 import "./styles.css";
 
 type Tab = "today" | "stats" | "coach" | "goals";
@@ -230,10 +233,13 @@ function TodayPanel({
       )}
 
       {!activeExercise && (
-        <button className="primary start-button" onClick={onStart}>
-          <Dumbbell aria-hidden="true" />
-          <span>{workoutId ? "Workout" : `Workout ${selectedWorkoutType}`}</span>
-        </button>
+        <>
+          <PlanPreview plan={plan} />
+          <button className="primary start-button" onClick={onStart}>
+            <Dumbbell aria-hidden="true" />
+            <span>{workoutId ? "Workout" : `Workout ${selectedWorkoutType}`}</span>
+          </button>
+        </>
       )}
 
       {activeExercise && (
@@ -250,6 +256,7 @@ function TodayPanel({
             <span>План: {activeExercise.planned_sets} x {activeExercise.planned_reps}</span>
             <span>Отдых: {activeExercise.rest_seconds} сек</span>
           </div>
+          <ExerciseHintCard hint={activeExercise.coach_hint} compact={false} />
           <form className="set-form" onSubmit={onSaveSet}>
             <label>Подход <input name="set_index" type="number" min="1" defaultValue="1" /></label>
             <label>Повторы <input name="reps" type="number" min="0" inputMode="numeric" /></label>
@@ -266,6 +273,53 @@ function TodayPanel({
         </article>
       )}
     </section>
+  );
+}
+
+function PlanPreview({ plan }: { plan: Exercise[] }) {
+  if (!plan.length) return null;
+  return (
+    <section className="plan-preview">
+      <section className="section-head compact">
+        <p className="eyebrow">Today plan</p>
+        <h2><ShieldCheck aria-hidden="true" /> Подсказки по упражнениям</h2>
+      </section>
+      <section className="list">
+        {plan.map((exercise, index) => (
+          <article key={exercise.exercise_id} className="plan-card">
+            <div className="plan-card-head">
+              <span>{index + 1}</span>
+              <div>
+                <h3>{exercise.name}</h3>
+                <p>{exercise.planned_sets} x {exercise.planned_reps}</p>
+              </div>
+            </div>
+            <ExerciseHintCard hint={exercise.coach_hint} compact />
+          </article>
+        ))}
+      </section>
+    </section>
+  );
+}
+
+function ExerciseHintCard({ hint, compact }: { hint?: CoachHint | null; compact: boolean }) {
+  const safeHint: CoachHint = hint || {
+    tone: "calm",
+    title: "Первый ориентир",
+    body: "Истории по упражнению пока нет. Выполни план спокойно и запиши RIR, боль и технику."
+  };
+  const Icon = safeHint.tone === "danger" ? ShieldAlert : safeHint.tone === "primary" ? TrendingUp : ShieldCheck;
+  return (
+    <div className={`exercise-hint ${safeHint.tone} ${compact ? "compact" : ""}`}>
+      <Icon aria-hidden="true" />
+      <div>
+        <h4>{safeHint.title}</h4>
+        <p>{safeHint.body}</p>
+        {!compact && safeHint.last_result && (
+          <small>{safeHint.last_date ? `${safeHint.last_date} · ` : ""}{safeHint.last_result}</small>
+        )}
+      </div>
+    </div>
   );
 }
 

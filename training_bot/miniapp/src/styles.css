@@ -433,6 +433,108 @@ button.primary {
   gap: 10px;
 }
 
+.plan-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.plan-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(12, 23, 24, 0.9);
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+
+.plan-card-head {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.plan-card-head > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgba(109, 233, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(109, 233, 255, 0.08);
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+.plan-card h3 {
+  color: #f4fbfc;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.plan-card p {
+  color: var(--muted);
+}
+
+.exercise-hint {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 9px;
+  align-items: start;
+  border: 1px solid rgba(34, 211, 166, 0.24);
+  border-radius: 8px;
+  background: rgba(7, 17, 18, 0.62);
+  padding: 10px;
+}
+
+.exercise-hint svg {
+  width: 20px;
+  height: 20px;
+  color: var(--emerald);
+  margin-top: 1px;
+}
+
+.exercise-hint h4 {
+  margin: 0 0 3px;
+  color: #f4fbfc;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.exercise-hint p {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.exercise-hint small {
+  display: block;
+  margin-top: 6px;
+  color: var(--faint);
+}
+
+.exercise-hint.primary {
+  border-color: rgba(109, 233, 255, 0.34);
+  background: rgba(11, 36, 40, 0.72);
+}
+
+.exercise-hint.primary svg {
+  color: var(--cyan);
+}
+
+.exercise-hint.danger {
+  border-color: rgba(255, 111, 145, 0.5);
+  background: rgba(42, 17, 25, 0.34);
+}
+
+.exercise-hint.danger svg {
+  color: var(--danger);
+}
+
+.exercise-hint.compact {
+  padding: 9px;
+}
+
 .section-head {
   display: grid;
   gap: 3px;

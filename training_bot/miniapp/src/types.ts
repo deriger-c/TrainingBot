@@ -1,3 +1,12 @@
+export type CoachHint = {
+  tone: "primary" | "calm" | "danger";
+  title: string;
+  body: string;
+  last_result?: string;
+  last_date?: string;
+  status?: string;
+};
+
 export type Exercise = {
   exercise_id: string;
   name: string;
@@ -6,6 +15,7 @@ export type Exercise = {
   planned_reps: string;
   rest_seconds: number;
   input_example: string;
+  coach_hint?: CoachHint | null;
 };
 
 export type Workout = {

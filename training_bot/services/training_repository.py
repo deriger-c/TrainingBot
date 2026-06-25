@@ -67,6 +67,7 @@ async def dashboard(db: AsyncSession, user: User) -> dict:
         )
     ).all()
     exercise_stats = await _exercise_stats(db, user)
+    exercise_hints = await _exercise_hints(db, user)
     weekly_summary = await _weekly_summary(db, user)
     next_workout_type = _next_workout_type(workouts)
     current_workout = next((workout for workout in workouts if workout.status == "started"), None)
@@ -79,10 +80,13 @@ async def dashboard(db: AsyncSession, user: User) -> dict:
             "headline": "Продолжить тренировку" if current_workout else f"Сегодня: Workout {next_workout_type}",
         },
         "plans": {
-            "A": [_exercise_payload(exercise) for exercise in get_workout("A")],
-            "B": [_exercise_payload(exercise) for exercise in get_workout("B")],
+            "A": [_exercise_payload(exercise, exercise_hints) for exercise in get_workout("A")],
+            "B": [_exercise_payload(exercise, exercise_hints) for exercise in get_workout("B")],
         },
-        "today_plan": [_exercise_payload(exercise) for exercise in get_workout(current_workout.workout_type if current_workout else next_workout_type)],
+        "today_plan": [
+            _exercise_payload(exercise, exercise_hints)
+            for exercise in get_workout(current_workout.workout_type if current_workout else next_workout_type)
+        ],
         "recent_workouts": [_workout_payload(workout) for workout in workouts],
         "recommendations": [_recommendation_payload(item) for item in recommendations],
         "coach_status": await _coach_status(db, user),
@@ -356,6 +360,72 @@ async def _weekly_summary(db: AsyncSession, user: User) -> dict:
     }
 
 
+async def _exercise_hints(db: AsyncSession, user: User, limit: int = 180) -> dict[str, dict]:
+    rows = (
+        await db.execute(
+            select(ExerciseSet, WorkoutSession)
+            .join(WorkoutSession, ExerciseSet.workout_id == WorkoutSession.id)
+            .where(WorkoutSession.user_id == user.id)
+            .order_by(desc(WorkoutSession.workout_date), desc(ExerciseSet.id))
+            .limit(limit)
+        )
+    ).all()
+    hints: dict[str, dict] = {}
+    for item, workout in rows:
+        if item.exercise_name in hints:
+            continue
+        hints[item.exercise_name] = _exercise_hint_from_set(item, workout)
+    return hints
+
+
+def _exercise_hint_from_set(item: ExerciseSet, workout: WorkoutSession) -> dict:
+    last_result = item.raw_result or _chart_point_label(item)
+    base = {
+        "last_result": last_result,
+        "last_date": workout.workout_date.isoformat(),
+        "status": item.progression_status or "",
+        "tone": "calm",
+    }
+    if item.pain_level > 0 or item.progression_status == "pain_stop":
+        return {
+            **base,
+            "tone": "danger",
+            "title": "Не повышай",
+            "body": f"В прошлый раз была боль {item.pain_level}/3. Повтори легче или остановись, если дискомфорт вернётся.",
+        }
+    if not item.technique_ok or item.progression_status == "technique_issue":
+        return {
+            **base,
+            "tone": "danger",
+            "title": "Сначала техника",
+            "body": "Вес не повышаем. Цель сегодня — чистое движение и контролируемый темп.",
+        }
+    if item.rir is None:
+        return {
+            **base,
+            "title": "Повтори и запиши RIR",
+            "body": f"Последний результат: {last_result}. Без RIR пока не решаем прогрессию.",
+        }
+    if item.rir <= 1:
+        return {
+            **base,
+            "title": "Держи уровень",
+            "body": f"Последний запас был RIR {item.rir}. Повтори {last_result} и оставь 1-2 повтора в запасе.",
+        }
+    if item.progression_status == "comparable_success":
+        return {
+            **base,
+            "tone": "primary",
+            "title": "Можно готовить повышение",
+            "body": "Если разминка ощущается легко и pain=0, попробуй минимальный следующий шаг. Иначе закрепи прошлый результат.",
+        }
+    return {
+        **base,
+        "title": "Повтори уровень",
+        "body": f"Ориентир на сегодня: {last_result}. Повышай только при RIR 2+ и pain=0.",
+    }
+
+
 async def _exercise_stats(db: AsyncSession, user: User, limit: int = 240) -> list[dict]:
     rows = (
         await db.execute(
@@ -507,7 +577,7 @@ def _chart_point_label(item: ExerciseSet) -> str:
     return item.raw_result
 
 
-def _exercise_payload(exercise) -> dict:
+def _exercise_payload(exercise, hints: dict[str, dict] | None = None) -> dict:
     return {
         "exercise_id": exercise.exercise_id,
         "name": exercise.name,
@@ -516,6 +586,7 @@ def _exercise_payload(exercise) -> dict:
         "planned_reps": exercise.planned_reps,
         "rest_seconds": exercise.rest_seconds,
         "input_example": exercise.input_example,
+        "coach_hint": (hints or {}).get(exercise.name),
     }
 
 
