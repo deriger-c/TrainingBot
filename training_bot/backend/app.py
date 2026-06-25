@@ -7,6 +7,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import Update
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot import set_commands
@@ -34,6 +35,19 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Training Bot API", version="0.1.0", lifespan=lifespan)
+    allowed_origins = [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ]
+    if config.miniapp_url:
+        allowed_origins.append(config.miniapp_url.rstrip("/"))
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "X-Telegram-Init-Data", "X-Worker-Token"],
+    )
 
     @app.get("/health")
     async def health() -> dict:
