@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: ["master", "main"]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: training_bot
+    env:
+      BOT_TOKEN: "123456:test-token"
+      ADMIN_USER_ID: "42"
+      DEFAULT_TIMEZONE: "Asia/Jerusalem"
+      DATABASE_URL: "sqlite+aiosqlite:///./data/training_bot.db"
+      WORKER_TOKEN: "ci-worker-token"
+      TELEGRAM_WEBHOOK_SECRET: "ci-webhook-secret"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: training_bot/requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Compile Python
+        run: python -m compileall bot.py web_app.py config.py backend db local_ai data handlers keyboards middlewares models services states utils tests scripts -q
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+  miniapp:
+    name: Mini App build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: training_bot/miniapp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: training_bot/miniapp/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
