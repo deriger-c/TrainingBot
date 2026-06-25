@@ -165,6 +165,22 @@ async def finish_workout(db: AsyncSession, user: User, workout_id: int, notes: s
     return workout
 
 
+async def create_goal(db: AsyncSession, user: User, payload: dict) -> Goal:
+    goal = Goal(
+        user_id=user.id,
+        name=payload["name"].strip(),
+        category=payload.get("category", "").strip(),
+        target=payload.get("target", "").strip(),
+        current_result=payload.get("current_result", "").strip(),
+        notes=payload.get("notes", "").strip(),
+        status="active",
+    )
+    db.add(goal)
+    await db.commit()
+    await db.refresh(goal)
+    return goal
+
+
 async def create_rule_recommendation(db: AsyncSession, user: User, workout: WorkoutSession) -> Recommendation:
     pain_count = await db.scalar(
         select(func.count(PainEvent.id)).where(PainEvent.user_id == user.id, PainEvent.workout_id == workout.id)
@@ -310,6 +326,7 @@ async def _exercise_stats(db: AsyncSession, user: User, limit: int = 240) -> lis
                 "pain_events": 0,
                 "latest_status": item.progression_status,
                 "latest_recommendation": item.recommendation,
+                "recent_points": [],
             },
         )
         stat["sessions"].add(workout.id)
@@ -324,6 +341,15 @@ async def _exercise_stats(db: AsyncSession, user: User, limit: int = 240) -> lis
             stat["rir_values"].append(item.rir)
         if item.pain_level > 0:
             stat["pain_events"] += 1
+        point_value = _chart_point_value(item)
+        if point_value is not None and len(stat["recent_points"]) < 8:
+            stat["recent_points"].append(
+                {
+                    "date": workout.workout_date.isoformat(),
+                    "value": point_value,
+                    "label": _chart_point_label(item),
+                }
+            )
 
     payloads = []
     for stat in grouped.values():
@@ -332,6 +358,7 @@ async def _exercise_stats(db: AsyncSession, user: User, limit: int = 240) -> lis
         stat["sessions"] = len(sessions)
         stat["average_rir"] = round(sum(rir_values) / len(rir_values), 1) if rir_values else None
         stat["trend_label"] = _trend_label(stat["latest_status"], stat["pain_events"])
+        stat["recent_points"].reverse()
         payloads.append(stat)
     return sorted(payloads, key=lambda item: (item["pain_events"], item["total_sets"]), reverse=True)[:12]
 
@@ -401,6 +428,26 @@ def _trend_label(status: str, pain_events: int) -> str:
     if status == "pain_stop":
         return "Прогрессия закрыта"
     return "Копим данные"
+
+
+def _chart_point_value(item: ExerciseSet) -> float | None:
+    if item.weight is not None and item.reps is not None:
+        return round(float(item.weight) * float(item.reps), 2)
+    if item.reps is not None:
+        return float(item.reps)
+    if item.duration_seconds is not None:
+        return float(item.duration_seconds)
+    return None
+
+
+def _chart_point_label(item: ExerciseSet) -> str:
+    if item.weight is not None and item.reps is not None:
+        return f"{item.weight:g}kg x {item.reps}"
+    if item.reps is not None:
+        return f"{item.reps} reps"
+    if item.duration_seconds is not None:
+        return f"{item.duration_seconds} sec"
+    return item.raw_result
 
 
 def _exercise_payload(exercise) -> dict:

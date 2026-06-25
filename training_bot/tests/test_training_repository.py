@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from services.training_repository import _next_actions, _next_workout_type, _trend_label
+from services.training_repository import _chart_point_label, _chart_point_value, _next_actions, _next_workout_type, _trend_label
 
 
 class TrainingRepositoryDashboardTests(unittest.TestCase):
@@ -30,6 +30,18 @@ class TrainingRepositoryDashboardTests(unittest.TestCase):
 
     def test_trend_label_prefers_pain_block(self) -> None:
         self.assertEqual(_trend_label("comparable_success", 1), "Сначала без боли")
+
+    def test_chart_point_prefers_volume_when_weight_and_reps_exist(self) -> None:
+        item = SimpleNamespace(weight=60.0, reps=8, duration_seconds=None, raw_result="60kg 8")
+
+        self.assertEqual(_chart_point_value(item), 480.0)
+        self.assertEqual(_chart_point_label(item), "60kg x 8")
+
+    def test_chart_point_uses_duration_for_holds(self) -> None:
+        item = SimpleNamespace(weight=None, reps=None, duration_seconds=40, raw_result="40 sec")
+
+        self.assertEqual(_chart_point_value(item), 40.0)
+        self.assertEqual(_chart_point_label(item), "40 sec")
 
 
 if __name__ == "__main__":

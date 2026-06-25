@@ -73,3 +73,16 @@ export async function finishWorkout(workoutId: number, notes: string) {
     body: JSON.stringify({ notes })
   });
 }
+
+export async function createGoal(input: {
+  name: string;
+  category?: string;
+  target?: string;
+  current_result?: string;
+  notes?: string;
+}) {
+  return request("/api/miniapp/goals", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}

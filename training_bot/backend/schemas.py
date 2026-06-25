@@ -30,6 +30,14 @@ class WorkoutFinish(BaseModel):
     notes: str = ""
 
 
+class GoalCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    category: str = Field(default="", max_length=80)
+    target: str = Field(default="", max_length=255)
+    current_result: str = Field(default="", max_length=255)
+    notes: str = ""
+
+
 class AIRecommendationCreate(BaseModel):
     workout_id: int
     title: str = "AI-разбор тренировки"

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { addSet, createWorkout, finishWorkout, getDashboard } from "./api";
+import { addSet, createGoal, createWorkout, finishWorkout, getDashboard } from "./api";
 import type { Dashboard, Exercise, ExerciseStat, NextAction, Recommendation, Workout } from "./types";
 import "./styles.css";
 
@@ -84,6 +84,25 @@ function App() {
     setTab("coach");
   }
 
+  async function saveGoal(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get("name") || "").trim();
+    if (!name) {
+      setStatus("Назови цель");
+      return;
+    }
+    await createGoal({
+      name,
+      category: String(form.get("category") || "").trim(),
+      target: String(form.get("target") || "").trim(),
+      current_result: String(form.get("current_result") || "").trim(),
+    });
+    event.currentTarget.reset();
+    await refresh();
+    setStatus("Цель добавлена");
+  }
+
   return (
     <main className="app">
       <header className="topbar">
@@ -116,7 +135,7 @@ function App() {
       )}
       {tab === "stats" && dashboard && <StatsPanel stats={dashboard.exercise_stats} workouts={dashboard.recent_workouts} />}
       {tab === "coach" && dashboard && <CoachPanel recommendations={dashboard.recommendations} actions={dashboard.next_actions} />}
-      {tab === "goals" && dashboard && <GoalsPanel goals={dashboard.goals} />}
+      {tab === "goals" && dashboard && <GoalsPanel goals={dashboard.goals} onSaveGoal={saveGoal} />}
     </main>
   );
 }
@@ -263,6 +282,7 @@ function ExerciseStatCard({ stat }: { stat: ExerciseStat }) {
         <small><b>{rirText}</b> avg RIR</small>
         <small><b>{stat.pain_events}</b> pain</small>
       </div>
+      <MiniChart points={stat.recent_points} />
       <div className="best-line">
         {stat.best_weight !== null && stat.best_weight !== undefined && <span>{stat.best_weight} кг</span>}
         {stat.best_reps !== null && stat.best_reps !== undefined && <span>{stat.best_reps} reps</span>}
@@ -270,6 +290,22 @@ function ExerciseStatCard({ stat }: { stat: ExerciseStat }) {
         <span>{stat.last_result}</span>
       </div>
     </article>
+  );
+}
+
+function MiniChart({ points }: { points: ExerciseStat["recent_points"] }) {
+  if (!points.length) return null;
+  const max = Math.max(...points.map((point) => point.value), 1);
+  return (
+    <div className="mini-chart" aria-label="Мини график прогресса">
+      {points.map((point, index) => (
+        <span
+          key={`${point.date}-${point.label}-${index}`}
+          title={`${point.date}: ${point.label}`}
+          style={{ height: `${Math.max(18, Math.round((point.value / max) * 100))}%` }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -296,13 +332,26 @@ function CoachPanel({ recommendations, actions }: { recommendations: Recommendat
   );
 }
 
-function GoalsPanel({ goals }: { goals: Array<Record<string, unknown>> }) {
+function GoalsPanel({
+  goals,
+  onSaveGoal
+}: {
+  goals: Array<Record<string, unknown>>;
+  onSaveGoal: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
   return (
     <section className="pane">
       <section className="section-head">
         <p className="eyebrow">Targets</p>
         <h2>Цели</h2>
       </section>
+      <form className="goal-form" onSubmit={onSaveGoal}>
+        <label>Цель <input name="name" placeholder="Подтягивания" required /></label>
+        <label>Категория <input name="category" placeholder="Strength" /></label>
+        <label>Сейчас <input name="current_result" placeholder="+5kg x 6" /></label>
+        <label>Хочу <input name="target" placeholder="+10kg x 6" /></label>
+        <button className="primary" type="submit">Добавить цель</button>
+      </form>
       <section className="list">
         {goals.length ? goals.map((goal) => (
           <article key={String(goal.id)} className="row">

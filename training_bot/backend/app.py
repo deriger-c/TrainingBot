@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot import set_commands
 from bot_factory import build_dispatcher
-from backend.schemas import AIRecommendationCreate, ExerciseSetCreate, WorkoutCreate, WorkoutFinish
+from backend.schemas import AIRecommendationCreate, ExerciseSetCreate, GoalCreate, WorkoutCreate, WorkoutFinish
 from backend.security import parse_and_validate_init_data, validate_telegram_webhook_secret, validate_worker_token
 from config import Config, load_config
 from db import get_session, init_db
@@ -107,6 +107,15 @@ def create_app() -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return {"ok": True, "workout": repo._workout_payload(workout)}
+
+    @app.post("/api/miniapp/goals")
+    async def miniapp_create_goal(
+        payload: GoalCreate,
+        user: User = Depends(current_miniapp_user),
+        db: AsyncSession = Depends(get_session),
+    ) -> dict:
+        goal = await repo.create_goal(db, user, payload.model_dump())
+        return {"ok": True, "goal": repo._goal_payload(goal)}
 
     @app.get("/api/coach/pending")
     async def coach_pending(

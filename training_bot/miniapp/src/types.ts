@@ -64,6 +64,7 @@ export type ExerciseStat = {
   latest_status: string;
   latest_recommendation: string;
   trend_label: string;
+  recent_points: Array<{ date: string; value: number; label: string }>;
 };
 
 export type NextAction = {
