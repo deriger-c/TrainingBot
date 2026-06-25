@@ -1,8 +1,24 @@
 :root {
-  color: #17211c;
-  background: #f3f6f1;
+  color: #e8f4f6;
+  background: #07100f;
+  color-scheme: dark;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 16px;
+  --bg: #07100f;
+  --surface: #0c1718;
+  --surface-strong: #102224;
+  --surface-soft: #132b2d;
+  --line: #234347;
+  --line-strong: #2c6970;
+  --text: #e8f4f6;
+  --muted: #93adb1;
+  --faint: #6f8b91;
+  --cyan: #6de9ff;
+  --blue: #3a9dff;
+  --emerald: #22d3a6;
+  --emerald-strong: #0ea77f;
+  --danger: #ff6f91;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
 }
 
 * {
@@ -11,6 +27,10 @@
 
 body {
   margin: 0;
+  background:
+    radial-gradient(circle at 50% -24px, rgba(58, 157, 255, 0.14), transparent 220px),
+    linear-gradient(180deg, #081414 0%, var(--bg) 36%, #050a0a 100%);
+  min-height: 100vh;
 }
 
 button,
@@ -18,9 +38,14 @@ input {
   font: inherit;
 }
 
+button {
+  cursor: pointer;
+}
+
 .app {
   min-height: 100vh;
   padding: 16px;
+  background: transparent;
 }
 
 .topbar {
@@ -28,6 +53,7 @@ input {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding-top: 2px;
 }
 
 h1,
@@ -40,15 +66,17 @@ p {
 h1 {
   font-size: 26px;
   line-height: 1.1;
+  color: var(--text);
 }
 
 h2 {
   font-size: 24px;
   line-height: 1.15;
+  color: #f4fbfc;
 }
 
 .eyebrow {
-  color: #59655c;
+  color: var(--cyan);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0;
@@ -65,23 +93,36 @@ h2 {
 .ghost,
 .actions button {
   min-height: 40px;
-  border: 1px solid #ccd7cf;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
-  color: #17211c;
+  background: rgba(12, 23, 24, 0.88);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.tabs button:active,
+.ghost:active,
+.actions button:active,
+.primary:active {
+  transform: translateY(1px);
 }
 
 .tabs .active {
-  border-color: #1f7a52;
-  background: #dff1e7;
+  border-color: var(--emerald);
+  background: rgba(34, 211, 166, 0.14);
+  color: #dffef5;
   font-weight: 700;
+  box-shadow: 0 0 0 1px rgba(109, 233, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .status {
   margin-bottom: 12px;
-  border-left: 4px solid #1f7a52;
-  background: #ffffff;
+  border-left: 4px solid var(--cyan);
+  background: rgba(10, 28, 30, 0.92);
   padding: 10px 12px;
+  color: #ddfbff;
+  box-shadow: var(--shadow);
 }
 
 .pane {
@@ -92,15 +133,22 @@ h2 {
 .exercise,
 .row,
 .muted {
-  border: 1px solid #d7ded9;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: rgba(12, 23, 24, 0.94);
   padding: 14px;
+  box-shadow: var(--shadow);
 }
 
 .exercise {
   display: grid;
   gap: 10px;
+  background:
+    linear-gradient(180deg, rgba(16, 34, 36, 0.98), rgba(10, 22, 23, 0.98));
+}
+
+.exercise p {
+  color: #bdd3d6;
 }
 
 .set-form {
@@ -112,17 +160,29 @@ h2 {
 .set-form label {
   display: grid;
   gap: 5px;
-  color: #3d4941;
+  color: var(--muted);
   font-size: 14px;
 }
 
 .set-form input {
   min-width: 0;
   min-height: 42px;
-  border: 1px solid #c9d4cc;
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 10px;
-  background: #fbfcfb;
+  background: #071112;
+  color: var(--text);
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.set-form input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(109, 233, 255, 0.14);
+}
+
+.set-form input::placeholder {
+  color: var(--faint);
 }
 
 .set-form .check,
@@ -140,15 +200,17 @@ h2 {
 .check input {
   min-height: 20px;
   width: 20px;
+  accent-color: var(--emerald);
 }
 
 .primary {
   min-height: 46px;
   border: 0;
   border-radius: 8px;
-  background: #1f7a52;
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--blue), var(--emerald-strong));
+  color: #031211;
   font-weight: 700;
+  box-shadow: 0 12px 30px rgba(14, 167, 127, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
 .actions {
@@ -169,11 +231,18 @@ h2 {
 
 .row h3 {
   font-size: 17px;
+  color: #f4fbfc;
 }
 
 .row p,
 .muted {
-  color: #59655c;
+  color: var(--muted);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
 }
 
 @media (max-width: 360px) {
