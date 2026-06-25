@@ -1,5 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  Bot,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  Dumbbell,
+  Plus,
+  RefreshCw,
+  Save,
+  Target,
+  Trophy,
+  type LucideIcon
+} from "lucide-react";
 import { addSet, createGoal, createWorkout, finishWorkout, getDashboard } from "./api";
 import type { Dashboard, Exercise, ExerciseStat, NextAction, Recommendation, Workout } from "./types";
 import "./styles.css";
@@ -110,14 +126,16 @@ function App() {
           <p className="eyebrow">Training Bot</p>
           <h1>{dashboard?.user.first_name || "Тренировка"}</h1>
         </div>
-        <button className="ghost" onClick={refresh}>Обновить</button>
+        <button className="ghost icon-button" onClick={refresh} aria-label="Обновить" title="Обновить">
+          <RefreshCw aria-hidden="true" />
+        </button>
       </header>
 
       <nav className="tabs" aria-label="Разделы">
-        <button className={tab === "today" ? "active" : ""} onClick={() => setTab("today")}>Сегодня</button>
-        <button className={tab === "stats" ? "active" : ""} onClick={() => setTab("stats")}>Статы</button>
-        <button className={tab === "coach" ? "active" : ""} onClick={() => setTab("coach")}>Коуч</button>
-        <button className={tab === "goals" ? "active" : ""} onClick={() => setTab("goals")}>Цели</button>
+        <button className={tab === "today" ? "active" : ""} onClick={() => setTab("today")} aria-label="Сегодня" title="Сегодня"><CalendarDays aria-hidden="true" /></button>
+        <button className={tab === "stats" ? "active" : ""} onClick={() => setTab("stats")} aria-label="Статы" title="Статы"><BarChart3 aria-hidden="true" /></button>
+        <button className={tab === "coach" ? "active" : ""} onClick={() => setTab("coach")} aria-label="Коуч" title="Коуч"><Bot aria-hidden="true" /></button>
+        <button className={tab === "goals" ? "active" : ""} onClick={() => setTab("goals")} aria-label="Цели" title="Цели"><Target aria-hidden="true" /></button>
       </nav>
 
       {status && <div className="status">{status}</div>}
@@ -166,9 +184,9 @@ function TodayPanel({
         <p className="eyebrow">{dashboard.weekly_summary.range_label}</p>
         <h2>{dashboard.today.headline}</h2>
         <div className="metrics">
-          <Metric label="Тренировки" value={dashboard.weekly_summary.completed_workouts} />
-          <Metric label="Подходы" value={dashboard.weekly_summary.total_sets} />
-          <Metric label="Боль" value={dashboard.weekly_summary.pain_events} danger={dashboard.weekly_summary.pain_events > 0} />
+          <Metric icon={Dumbbell} label="Тренировки" value={dashboard.weekly_summary.completed_workouts} />
+          <Metric icon={Activity} label="Подходы" value={dashboard.weekly_summary.total_sets} />
+          <Metric icon={AlertTriangle} label="Боль" value={dashboard.weekly_summary.pain_events} danger={dashboard.weekly_summary.pain_events > 0} />
         </div>
       </section>
 
@@ -176,7 +194,8 @@ function TodayPanel({
 
       {!activeExercise && (
         <button className="primary start-button" onClick={onStart}>
-          {workoutId ? "Продолжить Workout" : `Начать Workout ${dashboard.today.workout_type}`}
+          <Dumbbell aria-hidden="true" />
+          <span>{workoutId ? "Workout" : `Workout ${dashboard.today.workout_type}`}</span>
         </button>
       )}
 
@@ -201,11 +220,11 @@ function TodayPanel({
             <label>RIR <input name="rir" type="number" min="0" max="5" defaultValue="2" /></label>
             <label>Боль 0-3 <input name="pain_level" type="number" min="0" max="3" defaultValue="0" /></label>
             <label className="check"><input name="technique_ok" type="checkbox" defaultChecked /> Техника чистая</label>
-            <button className="primary" type="submit">Сохранить подход</button>
+            <button className="primary" type="submit"><Save aria-hidden="true" /><span>Сохранить</span></button>
           </form>
           <div className="actions">
-            <button onClick={onNext}>Следующее</button>
-            <button onClick={onFinish}>Завершить</button>
+            <button onClick={onNext}><ChevronRight aria-hidden="true" /><span>Следующее</span></button>
+            <button onClick={onFinish}><CheckCircle2 aria-hidden="true" /><span>Завершить</span></button>
           </div>
         </article>
       )}
@@ -213,10 +232,13 @@ function TodayPanel({
   );
 }
 
-function Metric({ label, value, danger = false }: { label: string; value: number; danger?: boolean }) {
+function Metric({ icon: Icon, label, value, danger = false }: { icon: LucideIcon; label: string; value: number; danger?: boolean }) {
   return (
     <div className={danger ? "metric danger" : "metric"}>
-      <strong>{value}</strong>
+      <div className="metric-top">
+        <Icon aria-hidden="true" />
+        <strong>{value}</strong>
+      </div>
       <span>{label}</span>
     </div>
   );
@@ -241,7 +263,7 @@ function StatsPanel({ stats, workouts }: { stats: ExerciseStat[]; workouts: Work
     <section className="pane">
       <section className="section-head">
         <p className="eyebrow">Progress</p>
-        <h2>Упражнения</h2>
+        <h2><BarChart3 aria-hidden="true" /> Упражнения</h2>
       </section>
       {stats.length ? (
         <section className="stat-list">
@@ -252,7 +274,7 @@ function StatsPanel({ stats, workouts }: { stats: ExerciseStat[]; workouts: Work
       )}
       <section className="section-head compact">
         <p className="eyebrow">History</p>
-        <h2>Последние тренировки</h2>
+        <h2><Trophy aria-hidden="true" /> Последние тренировки</h2>
       </section>
       <section className="list">
         {workouts.length ? workouts.map((workout) => (
@@ -314,7 +336,7 @@ function CoachPanel({ recommendations, actions }: { recommendations: Recommendat
     <section className="pane">
       <section className="section-head">
         <p className="eyebrow">Coach</p>
-        <h2>Рекомендации</h2>
+        <h2><Bot aria-hidden="true" /> Рекомендации</h2>
       </section>
       <ActionList actions={actions} />
       <section className="list">
@@ -343,14 +365,14 @@ function GoalsPanel({
     <section className="pane">
       <section className="section-head">
         <p className="eyebrow">Targets</p>
-        <h2>Цели</h2>
+        <h2><Target aria-hidden="true" /> Цели</h2>
       </section>
       <form className="goal-form" onSubmit={onSaveGoal}>
         <label>Цель <input name="name" placeholder="Подтягивания" required /></label>
         <label>Категория <input name="category" placeholder="Strength" /></label>
         <label>Сейчас <input name="current_result" placeholder="+5kg x 6" /></label>
         <label>Хочу <input name="target" placeholder="+10kg x 6" /></label>
-        <button className="primary" type="submit">Добавить цель</button>
+        <button className="primary" type="submit"><Plus aria-hidden="true" /><span>Добавить</span></button>
       </form>
       <section className="list">
         {goals.length ? goals.map((goal) => (
