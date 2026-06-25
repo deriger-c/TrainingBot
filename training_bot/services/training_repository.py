@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from uuid import uuid4
 
 from sqlalchemy import desc, func, select
@@ -66,12 +66,25 @@ async def dashboard(db: AsyncSession, user: User) -> dict:
             .limit(6)
         )
     ).all()
+    exercise_stats = await _exercise_stats(db, user)
+    weekly_summary = await _weekly_summary(db, user)
+    next_workout_type = _next_workout_type(workouts)
+    current_workout = next((workout for workout in workouts if workout.status == "started"), None)
     return {
         "user": {"telegram_id": user.telegram_id, "first_name": user.first_name, "timezone": user.timezone},
-        "today_plan": [_exercise_payload(exercise) for exercise in get_workout("A")],
+        "today": {
+            "workout_type": current_workout.workout_type if current_workout else next_workout_type,
+            "current_workout_id": current_workout.id if current_workout else None,
+            "current_status": current_workout.status if current_workout else "ready",
+            "headline": "Продолжить тренировку" if current_workout else f"Сегодня: Workout {next_workout_type}",
+        },
+        "today_plan": [_exercise_payload(exercise) for exercise in get_workout(current_workout.workout_type if current_workout else next_workout_type)],
         "recent_workouts": [_workout_payload(workout) for workout in workouts],
         "recommendations": [_recommendation_payload(item) for item in recommendations],
         "goals": [_goal_payload(goal) for goal in goals],
+        "weekly_summary": weekly_summary,
+        "exercise_stats": exercise_stats,
+        "next_actions": _next_actions(current_workout, next_workout_type, recommendations, weekly_summary),
     }
 
 
@@ -157,7 +170,7 @@ async def create_rule_recommendation(db: AsyncSession, user: User, workout: Work
         select(func.count(PainEvent.id)).where(PainEvent.user_id == user.id, PainEvent.workout_id == workout.id)
     )
     title = "Следующая тренировка"
-    body = "Повтори уровень и продолжай записывать RIR, боль и технику."
+    body = "Повтори уровень. Повышай нагрузку только после чистых подходов с RIR 2+ и pain=0."
     priority = "normal"
     if pain_count:
         title = "Прогрессия заблокирована из-за боли"
@@ -243,6 +256,151 @@ def _raw_result_from_set(payload: dict) -> str:
     if weight is None:
         return str(reps)
     return f"{weight}kg {reps}"
+
+
+async def _weekly_summary(db: AsyncSession, user: User) -> dict:
+    since = date.today() - timedelta(days=6)
+    completed_workouts = await db.scalar(
+        select(func.count(WorkoutSession.id)).where(
+            WorkoutSession.user_id == user.id,
+            WorkoutSession.status == "completed",
+            WorkoutSession.workout_date >= since,
+        )
+    )
+    total_sets = await db.scalar(
+        select(func.count(ExerciseSet.id))
+        .join(WorkoutSession, ExerciseSet.workout_id == WorkoutSession.id)
+        .where(WorkoutSession.user_id == user.id, WorkoutSession.workout_date >= since)
+    )
+    pain_events = await db.scalar(
+        select(func.count(PainEvent.id)).where(PainEvent.user_id == user.id, PainEvent.created_at >= datetime.combine(since, datetime.min.time()))
+    )
+    return {
+        "completed_workouts": int(completed_workouts or 0),
+        "total_sets": int(total_sets or 0),
+        "pain_events": int(pain_events or 0),
+        "range_label": "7 дней",
+    }
+
+
+async def _exercise_stats(db: AsyncSession, user: User, limit: int = 240) -> list[dict]:
+    rows = (
+        await db.execute(
+            select(ExerciseSet, WorkoutSession)
+            .join(WorkoutSession, ExerciseSet.workout_id == WorkoutSession.id)
+            .where(WorkoutSession.user_id == user.id)
+            .order_by(desc(WorkoutSession.workout_date), desc(ExerciseSet.id))
+            .limit(limit)
+        )
+    ).all()
+    grouped: dict[str, dict] = {}
+    for item, workout in rows:
+        stat = grouped.setdefault(
+            item.exercise_name,
+            {
+                "exercise_name": item.exercise_name,
+                "sessions": set(),
+                "total_sets": 0,
+                "last_date": workout.workout_date.isoformat(),
+                "last_result": item.raw_result,
+                "best_weight": None,
+                "best_reps": None,
+                "best_duration_seconds": None,
+                "rir_values": [],
+                "pain_events": 0,
+                "latest_status": item.progression_status,
+                "latest_recommendation": item.recommendation,
+            },
+        )
+        stat["sessions"].add(workout.id)
+        stat["total_sets"] += 1
+        if item.weight is not None:
+            stat["best_weight"] = max(stat["best_weight"] or item.weight, item.weight)
+        if item.reps is not None:
+            stat["best_reps"] = max(stat["best_reps"] or item.reps, item.reps)
+        if item.duration_seconds is not None:
+            stat["best_duration_seconds"] = max(stat["best_duration_seconds"] or item.duration_seconds, item.duration_seconds)
+        if item.rir is not None:
+            stat["rir_values"].append(item.rir)
+        if item.pain_level > 0:
+            stat["pain_events"] += 1
+
+    payloads = []
+    for stat in grouped.values():
+        rir_values = stat.pop("rir_values")
+        sessions = stat.pop("sessions")
+        stat["sessions"] = len(sessions)
+        stat["average_rir"] = round(sum(rir_values) / len(rir_values), 1) if rir_values else None
+        stat["trend_label"] = _trend_label(stat["latest_status"], stat["pain_events"])
+        payloads.append(stat)
+    return sorted(payloads, key=lambda item: (item["pain_events"], item["total_sets"]), reverse=True)[:12]
+
+
+def _next_workout_type(workouts: list[WorkoutSession]) -> str:
+    for workout in workouts:
+        if workout.status == "started":
+            return workout.workout_type or "A"
+    for workout in workouts:
+        if workout.status == "completed":
+            return "B" if workout.workout_type == "A" else "A"
+    return "A"
+
+
+def _next_actions(
+    current_workout: WorkoutSession | None,
+    next_workout_type: str,
+    recommendations: list[Recommendation],
+    weekly_summary: dict,
+) -> list[dict]:
+    if current_workout:
+        return [
+            {
+                "title": "Продолжить начатую тренировку",
+                "body": f"Workout {current_workout.workout_type}. Дозапиши подходы и заверши сессию.",
+                "tone": "primary",
+            }
+        ]
+    actions = [
+        {
+            "title": f"Открыть Workout {next_workout_type}",
+            "body": "Иди по плану сверху вниз. После каждого подхода записывай вес, повторы, RIR, боль и технику.",
+            "tone": "primary",
+        }
+    ]
+    important = next((item for item in recommendations if item.priority == "high"), None)
+    if important:
+        actions.append({"title": important.title, "body": important.body, "tone": "danger"})
+    elif weekly_summary["pain_events"]:
+        actions.append(
+            {
+                "title": "Следи за болью",
+                "body": "На этой неделе были pain-события. Сегодня не повышай нагрузку в проблемных движениях.",
+                "tone": "danger",
+            }
+        )
+    else:
+        actions.append(
+            {
+                "title": "Правило прогрессии",
+                "body": "Повышай вес только после чистого выполнения верхней границы плана с RIR 2+ и pain=0.",
+                "tone": "calm",
+            }
+        )
+    return actions
+
+
+def _trend_label(status: str, pain_events: int) -> str:
+    if pain_events:
+        return "Сначала без боли"
+    if status == "comparable_success":
+        return "Близко к повышению"
+    if status == "keep_same":
+        return "Держим уровень"
+    if status == "technique_issue":
+        return "Чистим технику"
+    if status == "pain_stop":
+        return "Прогрессия закрыта"
+    return "Копим данные"
 
 
 def _exercise_payload(exercise) -> dict:

@@ -36,10 +36,50 @@ export type Goal = {
   current_result: string;
 };
 
+export type TodayState = {
+  workout_type: string;
+  current_workout_id?: number | null;
+  current_status: string;
+  headline: string;
+};
+
+export type WeeklySummary = {
+  completed_workouts: number;
+  total_sets: number;
+  pain_events: number;
+  range_label: string;
+};
+
+export type ExerciseStat = {
+  exercise_name: string;
+  sessions: number;
+  total_sets: number;
+  last_date: string;
+  last_result: string;
+  best_weight?: number | null;
+  best_reps?: number | null;
+  best_duration_seconds?: number | null;
+  average_rir?: number | null;
+  pain_events: number;
+  latest_status: string;
+  latest_recommendation: string;
+  trend_label: string;
+};
+
+export type NextAction = {
+  title: string;
+  body: string;
+  tone: "primary" | "calm" | "danger";
+};
+
 export type Dashboard = {
   user: { telegram_id: number; first_name: string; timezone: string };
+  today: TodayState;
   today_plan: Exercise[];
   recent_workouts: Workout[];
   recommendations: Recommendation[];
   goals: Goal[];
+  weekly_summary: WeeklySummary;
+  exercise_stats: ExerciseStat[];
+  next_actions: NextAction[];
 };

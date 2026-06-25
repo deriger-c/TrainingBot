@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { addSet, createWorkout, finishWorkout, getDashboard } from "./api";
-import type { Dashboard, Exercise } from "./types";
+import type { Dashboard, Exercise, ExerciseStat, NextAction, Recommendation, Workout } from "./types";
 import "./styles.css";
 
-type Tab = "train" | "history" | "coach" | "goals";
+type Tab = "today" | "stats" | "coach" | "goals";
 
 function App() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [tab, setTab] = useState<Tab>("train");
+  const [tab, setTab] = useState<Tab>("today");
   const [workoutId, setWorkoutId] = useState<number | null>(null);
   const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
   const [status, setStatus] = useState("Загрузка");
@@ -21,24 +21,32 @@ function App() {
 
   async function refresh() {
     try {
-      setDashboard(await getDashboard());
+      const data = await getDashboard();
+      setDashboard(data);
+      setWorkoutId(data.today.current_workout_id || null);
       setStatus("");
     } catch {
       setStatus("Открой приложение из Telegram, чтобы пройти авторизацию.");
     }
   }
 
-  async function startWorkout() {
-    const created = await createWorkout({ workout_type: "A", energy_level: "Normal" });
-    setWorkoutId(created.workout.id);
-    setActiveExercise(dashboard?.today_plan[0] || null);
-    setStatus("Тренировка начата");
-  }
-
   const activeIndex = useMemo(() => {
     if (!dashboard || !activeExercise) return 0;
-    return dashboard.today_plan.findIndex((item) => item.exercise_id === activeExercise.exercise_id);
+    const index = dashboard.today_plan.findIndex((item) => item.exercise_id === activeExercise.exercise_id);
+    return index >= 0 ? index : 0;
   }, [dashboard, activeExercise]);
+
+  async function startWorkout() {
+    if (!dashboard) return;
+    if (dashboard.today.current_workout_id) {
+      setWorkoutId(dashboard.today.current_workout_id);
+    } else {
+      const created = await createWorkout({ workout_type: dashboard.today.workout_type, energy_level: "Normal" });
+      setWorkoutId(created.workout.id);
+    }
+    setActiveExercise(dashboard.today_plan[0] || null);
+    setStatus("Тренировка начата");
+  }
 
   function nextExercise() {
     if (!dashboard) return;
@@ -87,57 +95,222 @@ function App() {
       </header>
 
       <nav className="tabs" aria-label="Разделы">
-        <button className={tab === "train" ? "active" : ""} onClick={() => setTab("train")}>Сегодня</button>
-        <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")}>История</button>
+        <button className={tab === "today" ? "active" : ""} onClick={() => setTab("today")}>Сегодня</button>
+        <button className={tab === "stats" ? "active" : ""} onClick={() => setTab("stats")}>Статы</button>
         <button className={tab === "coach" ? "active" : ""} onClick={() => setTab("coach")}>Коуч</button>
         <button className={tab === "goals" ? "active" : ""} onClick={() => setTab("goals")}>Цели</button>
       </nav>
 
       {status && <div className="status">{status}</div>}
-      {tab === "train" && dashboard && (
-        <section className="pane">
-          {!workoutId && <button className="primary" onClick={startWorkout}>Начать Workout A</button>}
-          {activeExercise && (
-            <article className="exercise">
-              <p className="eyebrow">{activeIndex + 1}/{dashboard.today_plan.length} · {activeExercise.block}</p>
-              <h2>{activeExercise.name}</h2>
-              <p>План: {activeExercise.planned_sets} x {activeExercise.planned_reps}</p>
-              <p>Отдых: {activeExercise.rest_seconds} сек</p>
-              <form className="set-form" onSubmit={saveSet}>
-                <label>Подход <input name="set_index" type="number" min="1" defaultValue="1" /></label>
-                <label>Повторы <input name="reps" type="number" min="0" inputMode="numeric" /></label>
-                <label>Вес, кг <input name="weight" type="number" min="0" step="0.5" inputMode="decimal" /></label>
-                <label>RIR <input name="rir" type="number" min="0" max="5" defaultValue="2" /></label>
-                <label>Боль 0-3 <input name="pain_level" type="number" min="0" max="3" defaultValue="0" /></label>
-                <label className="check"><input name="technique_ok" type="checkbox" defaultChecked /> Техника чистая</label>
-                <button className="primary" type="submit">Сохранить подход</button>
-              </form>
-              <div className="actions">
-                <button onClick={nextExercise}>Следующее</button>
-                <button onClick={finish}>Завершить</button>
-              </div>
-            </article>
-          )}
-        </section>
+      {tab === "today" && dashboard && (
+        <TodayPanel
+          dashboard={dashboard}
+          workoutId={workoutId}
+          activeExercise={activeExercise}
+          activeIndex={activeIndex}
+          onStart={startWorkout}
+          onSaveSet={saveSet}
+          onNext={nextExercise}
+          onFinish={finish}
+        />
       )}
-
-      {tab === "history" && <List items={dashboard?.recent_workouts || []} empty="История пока пустая" />}
-      {tab === "coach" && <List items={dashboard?.recommendations || []} empty="Рекомендации появятся после тренировки" />}
-      {tab === "goals" && <List items={dashboard?.goals || []} empty="Цели пока не добавлены" />}
+      {tab === "stats" && dashboard && <StatsPanel stats={dashboard.exercise_stats} workouts={dashboard.recent_workouts} />}
+      {tab === "coach" && dashboard && <CoachPanel recommendations={dashboard.recommendations} actions={dashboard.next_actions} />}
+      {tab === "goals" && dashboard && <GoalsPanel goals={dashboard.goals} />}
     </main>
   );
 }
 
-function List({ items, empty }: { items: Array<Record<string, unknown>>; empty: string }) {
-  if (!items.length) return <section className="pane muted">{empty}</section>;
+function TodayPanel({
+  dashboard,
+  workoutId,
+  activeExercise,
+  activeIndex,
+  onStart,
+  onSaveSet,
+  onNext,
+  onFinish
+}: {
+  dashboard: Dashboard;
+  workoutId: number | null;
+  activeExercise: Exercise | null;
+  activeIndex: number;
+  onStart: () => void;
+  onSaveSet: (event: React.FormEvent<HTMLFormElement>) => void;
+  onNext: () => void;
+  onFinish: () => void;
+}) {
+  const progress = activeExercise ? Math.round(((activeIndex + 1) / dashboard.today_plan.length) * 100) : 0;
   return (
-    <section className="pane list">
-      {items.map((item) => (
-        <article key={String(item.id)} className="row">
-          <h3>{String(item.title || item.name || item.workout_type || "Запись")}</h3>
-          <p>{String(item.body || item.target || item.date || item.current_result || "")}</p>
+    <section className="pane">
+      <section className="hero-panel">
+        <p className="eyebrow">{dashboard.weekly_summary.range_label}</p>
+        <h2>{dashboard.today.headline}</h2>
+        <div className="metrics">
+          <Metric label="Тренировки" value={dashboard.weekly_summary.completed_workouts} />
+          <Metric label="Подходы" value={dashboard.weekly_summary.total_sets} />
+          <Metric label="Боль" value={dashboard.weekly_summary.pain_events} danger={dashboard.weekly_summary.pain_events > 0} />
+        </div>
+      </section>
+
+      <ActionList actions={dashboard.next_actions} />
+
+      {!activeExercise && (
+        <button className="primary start-button" onClick={onStart}>
+          {workoutId ? "Продолжить Workout" : `Начать Workout ${dashboard.today.workout_type}`}
+        </button>
+      )}
+
+      {activeExercise && (
+        <article className="exercise">
+          <div className="exercise-head">
+            <div>
+              <p className="eyebrow">{activeIndex + 1}/{dashboard.today_plan.length} · {activeExercise.block}</p>
+              <h2>{activeExercise.name}</h2>
+            </div>
+            <span className="progress-chip">{progress}%</span>
+          </div>
+          <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
+          <div className="plan-line">
+            <span>План: {activeExercise.planned_sets} x {activeExercise.planned_reps}</span>
+            <span>Отдых: {activeExercise.rest_seconds} сек</span>
+          </div>
+          <form className="set-form" onSubmit={onSaveSet}>
+            <label>Подход <input name="set_index" type="number" min="1" defaultValue="1" /></label>
+            <label>Повторы <input name="reps" type="number" min="0" inputMode="numeric" /></label>
+            <label>Вес, кг <input name="weight" type="number" min="0" step="0.5" inputMode="decimal" /></label>
+            <label>RIR <input name="rir" type="number" min="0" max="5" defaultValue="2" /></label>
+            <label>Боль 0-3 <input name="pain_level" type="number" min="0" max="3" defaultValue="0" /></label>
+            <label className="check"><input name="technique_ok" type="checkbox" defaultChecked /> Техника чистая</label>
+            <button className="primary" type="submit">Сохранить подход</button>
+          </form>
+          <div className="actions">
+            <button onClick={onNext}>Следующее</button>
+            <button onClick={onFinish}>Завершить</button>
+          </div>
+        </article>
+      )}
+    </section>
+  );
+}
+
+function Metric({ label, value, danger = false }: { label: string; value: number; danger?: boolean }) {
+  return (
+    <div className={danger ? "metric danger" : "metric"}>
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function ActionList({ actions }: { actions: NextAction[] }) {
+  if (!actions.length) return null;
+  return (
+    <section className="action-list">
+      {actions.map((action) => (
+        <article key={action.title} className={`action ${action.tone}`}>
+          <h3>{action.title}</h3>
+          <p>{action.body}</p>
         </article>
       ))}
+    </section>
+  );
+}
+
+function StatsPanel({ stats, workouts }: { stats: ExerciseStat[]; workouts: Workout[] }) {
+  return (
+    <section className="pane">
+      <section className="section-head">
+        <p className="eyebrow">Progress</p>
+        <h2>Упражнения</h2>
+      </section>
+      {stats.length ? (
+        <section className="stat-list">
+          {stats.map((stat) => <ExerciseStatCard key={stat.exercise_name} stat={stat} />)}
+        </section>
+      ) : (
+        <section className="pane muted">Статистика появится после первых сохранённых подходов</section>
+      )}
+      <section className="section-head compact">
+        <p className="eyebrow">History</p>
+        <h2>Последние тренировки</h2>
+      </section>
+      <section className="list">
+        {workouts.length ? workouts.map((workout) => (
+          <article key={workout.id} className="row">
+            <h3>Workout {workout.workout_type} · {workout.status}</h3>
+            <p>{workout.date}{workout.energy_level ? ` · ${workout.energy_level}` : ""}</p>
+          </article>
+        )) : <section className="pane muted">История пока пустая</section>}
+      </section>
+    </section>
+  );
+}
+
+function ExerciseStatCard({ stat }: { stat: ExerciseStat }) {
+  const risk = stat.pain_events > 0;
+  const rirText = stat.average_rir === null || stat.average_rir === undefined ? "нет" : String(stat.average_rir);
+  return (
+    <article className={risk ? "stat-card risk" : "stat-card"}>
+      <div className="stat-title">
+        <h3>{stat.exercise_name}</h3>
+        <span>{stat.trend_label}</span>
+      </div>
+      <p>{stat.latest_recommendation || "Копим данные для точной рекомендации."}</p>
+      <div className="stat-grid">
+        <small><b>{stat.sessions}</b> сессий</small>
+        <small><b>{stat.total_sets}</b> подходов</small>
+        <small><b>{rirText}</b> avg RIR</small>
+        <small><b>{stat.pain_events}</b> pain</small>
+      </div>
+      <div className="best-line">
+        {stat.best_weight !== null && stat.best_weight !== undefined && <span>{stat.best_weight} кг</span>}
+        {stat.best_reps !== null && stat.best_reps !== undefined && <span>{stat.best_reps} reps</span>}
+        {stat.best_duration_seconds !== null && stat.best_duration_seconds !== undefined && <span>{stat.best_duration_seconds} сек</span>}
+        <span>{stat.last_result}</span>
+      </div>
+    </article>
+  );
+}
+
+function CoachPanel({ recommendations, actions }: { recommendations: Recommendation[]; actions: NextAction[] }) {
+  return (
+    <section className="pane">
+      <section className="section-head">
+        <p className="eyebrow">Coach</p>
+        <h2>Рекомендации</h2>
+      </section>
+      <ActionList actions={actions} />
+      <section className="list">
+        {recommendations.length ? recommendations.map((item) => (
+          <article key={item.id} className={`row ${item.priority === "high" ? "risk" : ""}`}>
+            <div className="stat-title">
+              <h3>{item.title}</h3>
+              <span>{item.source}</span>
+            </div>
+            <p>{item.body}</p>
+          </article>
+        )) : <section className="pane muted">Рекомендации появятся после тренировки</section>}
+      </section>
+    </section>
+  );
+}
+
+function GoalsPanel({ goals }: { goals: Array<Record<string, unknown>> }) {
+  return (
+    <section className="pane">
+      <section className="section-head">
+        <p className="eyebrow">Targets</p>
+        <h2>Цели</h2>
+      </section>
+      <section className="list">
+        {goals.length ? goals.map((goal) => (
+          <article key={String(goal.id)} className="row">
+            <h3>{String(goal.name || "Цель")}</h3>
+            <p>{String(goal.current_result || "Текущий результат не записан")} → {String(goal.target || "")}</p>
+          </article>
+        )) : <section className="pane muted">Цели пока не добавлены</section>}
+      </section>
     </section>
   );
 }
