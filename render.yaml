@@ -27,3 +27,5 @@ services:
         sync: false
       - key: DEFAULT_TIMEZONE
         value: Asia/Jerusalem
+      - key: PYTHON_VERSION
+        value: 3.12.11
