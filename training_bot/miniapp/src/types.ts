@@ -29,6 +29,14 @@ export type Recommendation = {
   generated_at: string;
 };
 
+export type CoachStatus = {
+  mode: "local_ollama";
+  state: "waiting_for_worker" | "ready" | "no_ai_yet";
+  label: string;
+  pending_analysis_count: number;
+  latest_ai_at?: string | null;
+};
+
 export type Goal = {
   id: number;
   name: string;
@@ -80,6 +88,7 @@ export type Dashboard = {
   today_plan: Exercise[];
   recent_workouts: Workout[];
   recommendations: Recommendation[];
+  coach_status?: CoachStatus;
   goals: Goal[];
   weekly_summary: WeeklySummary;
   exercise_stats: ExerciseStat[];

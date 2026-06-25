@@ -85,6 +85,7 @@ async def dashboard(db: AsyncSession, user: User) -> dict:
         "today_plan": [_exercise_payload(exercise) for exercise in get_workout(current_workout.workout_type if current_workout else next_workout_type)],
         "recent_workouts": [_workout_payload(workout) for workout in workouts],
         "recommendations": [_recommendation_payload(item) for item in recommendations],
+        "coach_status": await _coach_status(db, user),
         "goals": [_goal_payload(goal) for goal in goals],
         "weekly_summary": weekly_summary,
         "exercise_stats": exercise_stats,
@@ -238,6 +239,58 @@ async def pending_workouts_for_ai(db: AsyncSession, limit: int = 5) -> list[dict
         ).all()
         items.append({"workout": _workout_payload(workout), "sets": [_set_payload(item) for item in sets]})
     return items
+
+
+async def _coach_status(db: AsyncSession, user: User) -> dict:
+    recent_completed = (
+        await db.scalars(
+            select(WorkoutSession)
+            .where(WorkoutSession.user_id == user.id, WorkoutSession.status == "completed")
+            .order_by(desc(WorkoutSession.updated_at))
+            .limit(12)
+        )
+    ).all()
+    pending_count = 0
+    for workout in recent_completed:
+        existing = await db.scalar(
+            select(Recommendation.id).where(
+                Recommendation.workout_id == workout.id,
+                Recommendation.source == "ollama",
+            )
+        )
+        if not existing:
+            pending_count += 1
+
+    latest_ai = await db.scalar(
+        select(Recommendation)
+        .where(Recommendation.user_id == user.id, Recommendation.source == "ollama")
+        .order_by(desc(Recommendation.generated_at), desc(Recommendation.id))
+        .limit(1)
+    )
+    if pending_count:
+        state = "waiting_for_worker"
+        label = _pending_ai_label(pending_count)
+    elif latest_ai:
+        state = "ready"
+        label = "Локальный AI свежий"
+    else:
+        state = "no_ai_yet"
+        label = "AI-разбор появится после запуска worker"
+    return {
+        "mode": "local_ollama",
+        "state": state,
+        "label": label,
+        "pending_analysis_count": pending_count,
+        "latest_ai_at": latest_ai.generated_at.isoformat() if latest_ai else None,
+    }
+
+
+def _pending_ai_label(count: int) -> str:
+    if count % 10 == 1 and count % 100 != 11:
+        return f"{count} тренировка ждёт локальный AI"
+    if count % 10 in (2, 3, 4) and count % 100 not in (12, 13, 14):
+        return f"{count} тренировки ждут локальный AI"
+    return f"{count} тренировок ждут локальный AI"
 
 
 async def save_ai_recommendation(db: AsyncSession, payload: dict) -> Recommendation:

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import AsyncMock, patch
 
-from local_ai.worker import build_prompt
+from local_ai.worker import build_prompt, run_loop
 
 
 class LocalAIWorkerTests(unittest.TestCase):
@@ -26,6 +27,21 @@ class LocalAIWorkerTests(unittest.TestCase):
 
         self.assertIn("Нельзя советовать повышение нагрузки", prompt)
         self.assertIn("rule=comparable_success", prompt)
+
+
+class LocalAIWorkerLoopTests(unittest.IsolatedAsyncioTestCase):
+    async def test_loop_continues_after_failed_cycle(self) -> None:
+        stop = RuntimeError("stop test loop")
+        with (
+            patch("local_ai.worker.run_once", new=AsyncMock(side_effect=[RuntimeError("ollama down"), 1])) as run_once,
+            patch("local_ai.worker.asyncio.sleep", new=AsyncMock(side_effect=[None, stop])),
+            patch("local_ai.worker.logger.exception") as log_exception,
+        ):
+            with self.assertRaises(RuntimeError):
+                await run_loop(60)
+
+        self.assertEqual(run_once.await_count, 2)
+        log_exception.assert_called_once()
 
 
 if __name__ == "__main__":

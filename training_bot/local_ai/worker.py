@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import asyncio
 import logging
 
@@ -89,8 +90,28 @@ async def run_once() -> int:
         return saved
 
 
+async def run_loop(interval_seconds: int) -> None:
+    while True:
+        try:
+            saved = await run_once()
+            logger.info("AI recommendations saved: %s", saved)
+        except Exception:
+            logger.exception("AI worker cycle failed")
+        await asyncio.sleep(interval_seconds)
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Local Ollama worker for Training Bot")
+    parser.add_argument("--loop", action="store_true", help="keep checking cloud backend for new workouts")
+    parser.add_argument("--interval", type=int, default=900, help="seconds between checks in --loop mode")
+    args = parser.parse_args()
+
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+    if args.loop:
+        interval = max(args.interval, 60)
+        logger.info("AI worker loop started, interval=%ss", interval)
+        asyncio.run(run_loop(interval))
+        return
     saved = asyncio.run(run_once())
     logger.info("AI recommendations saved: %s", saved)
 

@@ -3,7 +3,14 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from services.training_repository import _chart_point_label, _chart_point_value, _next_actions, _next_workout_type, _trend_label
+from services.training_repository import (
+    _chart_point_label,
+    _chart_point_value,
+    _next_actions,
+    _next_workout_type,
+    _pending_ai_label,
+    _trend_label,
+)
 
 
 class TrainingRepositoryDashboardTests(unittest.TestCase):
@@ -42,6 +49,11 @@ class TrainingRepositoryDashboardTests(unittest.TestCase):
 
         self.assertEqual(_chart_point_value(item), 40.0)
         self.assertEqual(_chart_point_label(item), "40 sec")
+
+    def test_pending_ai_label_uses_russian_plural_forms(self) -> None:
+        self.assertEqual(_pending_ai_label(1), "1 тренировка ждёт локальный AI")
+        self.assertEqual(_pending_ai_label(2), "2 тренировки ждут локальный AI")
+        self.assertEqual(_pending_ai_label(5), "5 тренировок ждут локальный AI")
 
 
 if __name__ == "__main__":

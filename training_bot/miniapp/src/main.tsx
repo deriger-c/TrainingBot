@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Dumbbell,
+  Laptop,
   Plus,
   RefreshCw,
   Save,
@@ -17,7 +18,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import { addSet, createGoal, createWorkout, finishWorkout, getDashboard } from "./api";
-import type { Dashboard, Exercise, ExerciseStat, NextAction, Recommendation, Workout } from "./types";
+import type { CoachStatus, Dashboard, Exercise, ExerciseStat, NextAction, Recommendation, Workout } from "./types";
 import "./styles.css";
 
 type Tab = "today" | "stats" | "coach" | "goals";
@@ -166,7 +167,7 @@ function App() {
         />
       )}
       {tab === "stats" && dashboard && <StatsPanel stats={dashboard.exercise_stats} workouts={dashboard.recent_workouts} />}
-      {tab === "coach" && dashboard && <CoachPanel recommendations={dashboard.recommendations} actions={dashboard.next_actions} />}
+      {tab === "coach" && dashboard && <CoachPanel recommendations={dashboard.recommendations} actions={dashboard.next_actions} status={dashboard.coach_status} />}
       {tab === "goals" && dashboard && <GoalsPanel goals={dashboard.goals} onSaveGoal={saveGoal} />}
     </main>
   );
@@ -407,13 +408,22 @@ function ProgressChart({
   );
 }
 
-function CoachPanel({ recommendations, actions }: { recommendations: Recommendation[]; actions: NextAction[] }) {
+function CoachPanel({
+  recommendations,
+  actions,
+  status
+}: {
+  recommendations: Recommendation[];
+  actions: NextAction[];
+  status?: CoachStatus;
+}) {
   return (
     <section className="pane">
       <section className="section-head">
         <p className="eyebrow">Coach</p>
         <h2><Bot aria-hidden="true" /> Рекомендации</h2>
       </section>
+      <CoachStatusCard status={status} />
       <ActionList actions={actions} />
       <section className="list">
         {recommendations.length ? recommendations.map((item) => (
@@ -427,6 +437,24 @@ function CoachPanel({ recommendations, actions }: { recommendations: Recommendat
         )) : <section className="pane muted">Рекомендации появятся после тренировки</section>}
       </section>
     </section>
+  );
+}
+
+function CoachStatusCard({ status }: { status?: CoachStatus }) {
+  const label = status?.label || "Локальный AI подключается через worker на твоём ПК";
+  const detail = status?.latest_ai_at
+    ? `Последний AI-разбор: ${new Date(status.latest_ai_at).toLocaleDateString()}`
+    : "Backend работает и без AI. Разборы появятся, когда включён Ollama worker.";
+  const tone = status?.state === "waiting_for_worker" ? "waiting" : status?.state === "ready" ? "ready" : "idle";
+  return (
+    <article className={`coach-status ${tone}`}>
+      <div>
+        <p className="eyebrow">Local AI</p>
+        <h3><Laptop aria-hidden="true" /> {label}</h3>
+        <p>{detail}</p>
+      </div>
+      {status?.pending_analysis_count ? <strong>{status.pending_analysis_count}</strong> : null}
+    </article>
   );
 }
 
